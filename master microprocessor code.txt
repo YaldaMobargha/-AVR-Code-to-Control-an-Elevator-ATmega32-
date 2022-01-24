@@ -1,0 +1,186 @@
+#include <mega32.h>  
+#include <delay.h>  
+#include <alcd.h>  
+#include <stdlib.h> 
+#include <stdio.h> 
+
+interrupt [EXT_INT0] void interrupt_Fan (void) 
+{
+    PORTC.2=~PORTC.2;  
+}
+
+interrupt [EXT_INT1] void interrupt_Emergency_Alarm (void) 
+{
+    PORTC.1=~PORTC.1; 
+}
+
+void main(void)
+{
+char starting_floor=0; 
+char current_floor=0;  
+char destination_floor=0;
+int destination_floor_memory=0; 
+int memory_check=0; 
+signed char difference=0;
+signed char difference_memory=0;  
+char i=0; 
+char array [16]={0}; 
+char number[16]={0};  
+DDRC=0xFF; 
+PORTC=0x00; 
+DDRD.2=0; 
+PORTD.2=1; 
+DDRD.3=0; 
+PORTD.3=1; 
+DDRD.5=1; 
+DDRD.7=1; 
+PORTD.7=1;
+
+
+SREG = 1 << SREG_I;
+
+MCUCR = ((1 << ISC00)|(1 << ISC01)|(1 << ISC10)|(1 << ISC11));
+
+GICR = ((1 << INT0) | (1 << INT1));
+// Timer/Counter 1 initialization
+// Clock source: System Clock
+// Clock value: 1000.000 kHz
+// Mode: Fast PWM top=ICR1
+// OC1A output: Non-Inverted PWM
+// OC1B output: Disconnected
+// Noise Canceler: Off
+// Input Capture on Falling Edge
+// Timer Period: 10 ms
+// Output Pulse(s):
+// OC1A Period: 10 ms Width: 0.80008 ms
+// Timer1 Overflow Interrupt: On
+// Input Capture Interrupt: Off
+// Compare A Match Interrupt: Off
+// Compare B Match Interrupt: Off
+TCCR1A=(1<<COM1A1) | (0<<COM1A0) | (0<<COM1B1) | (0<<COM1B0) | (1<<WGM11) | (0<<WGM10);
+TCCR1B=(0<<ICNC1) | (0<<ICES1) | (1<<WGM13) | (1<<WGM12) | (0<<CS12) | (1<<CS11) | (0<<CS10);
+TCNT1H=0xD8;
+TCNT1L=0xF0;
+ICR1H=0x27;
+ICR1L=0x0F;
+OCR1AH=0x03;
+OCR1AL=0x20;
+OCR1BH=0x00;
+OCR1BL=0x00;
+// USART initialization
+// Communication Parameters: 8 Data, 1 Stop, No Parity
+// USART Receiver: On
+// USART Transmitter: Off
+// USART Mode: Asynchronous
+// USART Baud Rate: 9600 (Double Speed Mode)
+UCSRA=(0<<RXC) | (0<<TXC) | (0<<UDRE) | (0<<FE) | (0<<DOR) | (0<<UPE) | (1<<U2X) | (0<<MPCM);
+UCSRB=(0<<RXCIE) | (0<<TXCIE) | (0<<UDRIE) | (1<<RXEN) | (0<<TXEN) | (0<<UCSZ2) | (0<<RXB8) | (0<<TXB8);
+UCSRC=(1<<URSEL) | (0<<UMSEL) | (0<<UPM1) | (0<<UPM0) | (0<<USBS) | (1<<UCSZ1) | (1<<UCSZ0) | (0<<UCPOL);
+UBRRH=0x00;
+UBRRL=0x67;
+
+lcd_init (16); 
+lcd_clear (); 
+lcd_gotoxy (6,0); 
+lcd_putsf("<G>"); 
+while (1)
+    {
+        gets(number,3); 
+        memory_check=atoi(number); 
+        if(memory_check>0)   
+        {
+            destination_floor_memory=memory_check; 
+        }
+
+        switch (destination_floor_memory) 
+        {
+            case 5 : 
+             destination_floor_memory=0;
+             break;
+            case 6 : 
+             destination_floor_memory=0;
+             break;
+            case 7 : 
+             destination_floor_memory=1;
+             break;
+            case 8 : 
+             destination_floor_memory=2;
+             break;
+            case 9 : 
+             destination_floor_memory=3;
+             break;
+            case 10 : 
+             destination_floor_memory=4;
+             break;
+
+        }
+
+        destination_floor=destination_floor_memory; 
+        difference=destination_floor-starting_floor; 
+
+        if(difference!=0) 
+        {
+            OCR1AH=0x05;  
+            OCR1AL=0xDB;
+            delay_ms(1000);
+            difference_memory=difference;
+            if(difference>0) 
+            {
+                PORTC.4=1;
+                PORTC.3=0;
+                lcd_gotoxy (6,0);
+                lcd_putchar (94); 
+                lcd_gotoxy (8,0);
+                lcd_putchar (' ');
+
+            }
+            if(difference<0) 
+            {
+                PORTC.4=0;
+                PORTC.3=1;
+                difference=-difference;
+                lcd_gotoxy (6,0);
+                lcd_putchar (118); 
+                lcd_gotoxy (8,0);
+                lcd_putchar (' ');
+            }
+            for(i=0;i<difference;i++)
+            {
+                delay_ms(5000);
+                if(difference_memory>0) 
+                {
+                   current_floor++;
+                }
+                if(difference_memory<0) 
+                {
+                   current_floor--;
+                }
+                lcd_gotoxy (7,0);
+                if(current_floor==0) 
+                {
+                   lcd_putchar ('G'); 
+                }
+                else 
+                {
+                    sprintf (array,"%d",current_floor); 
+                    lcd_puts (array);
+                }
+            }
+            PORTC.4=0; 
+            PORTC.3=0;
+            lcd_gotoxy (6,0);
+            lcd_putchar ('<');
+            lcd_gotoxy (8,0);
+            lcd_putchar ('>');
+            delay_ms(4000);
+            PORTC.1=1; 
+            delay_ms(150);
+            PORTC.1=0;  
+            OCR1AH=0x03;  
+            OCR1AL=0x20;
+            starting_floor=destination_floor;  
+            delay_ms(5000);
+            difference_memory=0; 
+        }
+    }
+}

@@ -1,0 +1,72 @@
+#include <mega32.h> 
+#include <delay.h> 
+#include <stdlib.h> 
+#include <stdio.h>  
+
+void main(void)
+{
+char destination_floor; 
+char array [16]={0};  
+DDRA=0x00;  
+PORTA=0xFF; 
+DDRB=0x00; 
+PORTB=0xFF; 
+
+// USART initialization
+// Communication Parameters: 8 Data, 1 Stop, No Parity
+// USART Receiver: Off
+// USART Transmitter: On
+// USART Mode: Asynchronous
+// USART Baud Rate: 9600 (Double Speed Mode)
+UCSRA=(0<<RXC) | (0<<TXC) | (0<<UDRE) | (0<<FE) | (0<<DOR) | (0<<UPE) | (1<<U2X) | (0<<MPCM);
+UCSRB=(0<<RXCIE) | (0<<TXCIE) | (0<<UDRIE) | (0<<RXEN) | (1<<TXEN) | (0<<UCSZ2) | (0<<RXB8) | (0<<TXB8);
+UCSRC=(1<<URSEL) | (0<<UMSEL) | (0<<UPM1) | (0<<UPM0) | (0<<USBS) | (1<<UCSZ1) | (1<<UCSZ0) | (0<<UCPOL);
+UBRRH=0x00;
+UBRRL=0x67;
+while (1)
+    {
+        
+        if(PINA.0==0)  
+        {
+            destination_floor= 5;
+        }
+        if(PINA.1==0)  
+        {
+            destination_floor= 1;
+        }
+        if(PINA.2==0) 
+        {
+            destination_floor= 2;
+        }
+        if(PINA.3==0)  
+        {
+            destination_floor= 3;
+        }
+        if(PINA.4==0)
+        {
+            destination_floor= 4;
+        }
+         if(PINB.0==0)  
+        {
+            destination_floor= 6;
+        }
+        if(PINB.1==0)   
+        {
+            destination_floor= 7;
+        }
+        if(PINB.2==0)   
+        {
+            destination_floor= 8;
+        }
+        if(PINB.3==0)  
+        {
+            destination_floor= 9;
+        }
+        if(PINB.4==0)  
+        {
+            destination_floor= 10;
+        }
+        sprintf (array,"%d",destination_floor);
+        puts(array); 
+    }
+}
